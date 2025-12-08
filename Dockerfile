@@ -32,8 +32,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 COPY backend/pyproject.toml backend/uv.lock ./
 
 # Install dependencies into system python (since we are in container)
-# --system flag installs directly to site-packages
-RUN uv sync --system --frozen
+# Install dependencies into default virtual environment (.venv)
+RUN uv sync --frozen
+
+# Place .venv in PATH so we can access installed executables (like uvicorn)
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy backend source code
 COPY backend/app ./app

@@ -13,4 +13,4 @@ EXPOSE 5173
 
 # Run dev server with host exposure
 # We use exec format to ensure signals are passed
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host", "--port", "5173"]
