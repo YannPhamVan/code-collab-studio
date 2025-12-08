@@ -38,8 +38,11 @@ export interface LeaderboardEntry {
 }
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
-const WS_BASE_URL = 'ws://localhost:8000/ws';
+const isDev = import.meta.env.DEV;
+const API_BASE_URL = isDev ? 'http://localhost:8000/api' : '/api';
+const WS_BASE_URL = isDev
+  ? 'ws://localhost:8000/ws'
+  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 // Stubbed HTTP endpoints
 export const api = {
@@ -83,7 +86,7 @@ export const api = {
     // Stubbed - simulates code execution
     console.log(`[API] Executing ${language} code...`);
     await simulateDelay(1000);
-    
+
     return {
       success: true,
       output: `> Running ${language} code...\n\nHello, World!\n\nExecution completed successfully.`,
@@ -179,7 +182,7 @@ export class WebSocketClient {
 
   private simulateMockConnection(): void {
     console.log('[WS] Mock connection established');
-    
+
     // Simulate periodic updates
     setInterval(() => {
       this.handleMessage({
@@ -222,7 +225,7 @@ export class WebSocketClient {
 
   send(type: string, data: unknown): void {
     const message = JSON.stringify({ type, data });
-    
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(message);
     } else {
@@ -271,7 +274,7 @@ function solution(input) {
 solution("test");
 `;
   }
-  
+
   return `# Welcome to the Collaborative Coding Interview!
 # Write your solution below
 
