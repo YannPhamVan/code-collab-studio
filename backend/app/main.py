@@ -36,12 +36,18 @@ static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.isdir(static_dir):
     app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
 
-    # Catch-all for SPA handling
+    # Explicit handler for root /
+    @app.get("/")
+    async def serve_root():
+        return FileResponse(os.path.join(static_dir, "index.html"))
+
+    # Catch-all for SPA handling (for client-side routing like /session/123)
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         # Allow API routes to pass through (though they should be matched above)
         if full_path.startswith("api") or full_path.startswith("ws"):
-            return {"error": "Not found"}
+            # If we are here, it means no specific API route matched earlier
+            return {"detail": "Not Found"}
             
         # Serve index.html for all other routes
         return FileResponse(os.path.join(static_dir, "index.html"))
