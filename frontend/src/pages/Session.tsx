@@ -5,7 +5,8 @@ import { SessionHeader } from '@/components/SessionHeader';
 import { ParticipantList } from '@/components/ParticipantList';
 import { Leaderboard } from '@/components/Leaderboard';
 import { OutputPanel } from '@/components/OutputPanel';
-import { api, WebSocketClient, getDefaultCode, Session, Participant, LeaderboardEntry, CodeExecutionResult } from '@/lib/api';
+import { api, WebSocketClient, getDefaultCode, Session, Participant, LeaderboardEntry } from '@/lib/api';
+import { Executor, ExecutionResult } from '@/lib/executor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Trophy } from 'lucide-react';
 
@@ -16,7 +17,7 @@ export default function SessionPage() {
   const [language, setLanguage] = useState<'javascript' | 'python'>('javascript');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [output, setOutput] = useState<CodeExecutionResult | null>(null);
+  const [output, setOutput] = useState<ExecutionResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
 
@@ -45,7 +46,7 @@ export default function SessionPage() {
     if (!sessionId) return;
 
     const client = new WebSocketClient(sessionId);
-    
+
     client.connect().then(() => {
       client.on('code_update', (data) => {
         const { code: newCode } = data as { code: string };
@@ -83,16 +84,17 @@ export default function SessionPage() {
   const handleRun = useCallback(async () => {
     setIsRunning(true);
     setOutput(null);
-    
+
     try {
-      const result = await api.executeCode(code, language);
+      // Execute code in browser securely
+      const result = await Executor.run(code, language);
       setOutput(result);
+
+      // Optional: Send run event to server if needed for metrics/logging in future
     } catch (error) {
       setOutput({
-        success: false,
-        output: '',
-        error: 'Failed to execute code. Please try again.',
-        executionTime: 0,
+        isError: true,
+        output: 'Failed to execute code. Please try again.',
       });
     } finally {
       setIsRunning(false);
@@ -127,7 +129,7 @@ export default function SessionPage() {
               onChange={handleCodeChange}
             />
           </div>
-          
+
           <div className="h-64 border-t border-border p-4">
             <OutputPanel result={output} isRunning={isRunning} />
           </div>
@@ -146,7 +148,7 @@ export default function SessionPage() {
                 Rank
               </TabsTrigger>
             </TabsList>
-            
+
             <div className="flex-1 overflow-auto pt-4 scrollbar-thin">
               <TabsContent value="participants" className="m-0 h-full">
                 <ParticipantList participants={participants} />

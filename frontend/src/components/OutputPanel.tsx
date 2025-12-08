@@ -1,8 +1,8 @@
-import { Terminal, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { CodeExecutionResult } from '@/lib/api';
+import { Terminal, CheckCircle2, XCircle } from 'lucide-react';
+import { ExecutionResult } from '@/lib/executor';
 
 interface OutputPanelProps {
-  result: CodeExecutionResult | null;
+  result: ExecutionResult | null;
   isRunning: boolean;
 }
 
@@ -16,7 +16,7 @@ export function OutputPanel({ result, isRunning }: OutputPanelProps) {
         </div>
         {result && (
           <div className="flex items-center gap-2 text-xs">
-            {result.success ? (
+            {!result.isError ? (
               <span className="flex items-center gap-1 text-success">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Success
@@ -27,10 +27,6 @@ export function OutputPanel({ result, isRunning }: OutputPanelProps) {
                 Error
               </span>
             )}
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {result.executionTime}ms
-            </span>
           </div>
         )}
       </div>
@@ -43,11 +39,10 @@ export function OutputPanel({ result, isRunning }: OutputPanelProps) {
           </div>
         ) : result ? (
           <pre
-            className={`font-mono text-sm whitespace-pre-wrap ${
-              result.success ? 'text-foreground' : 'text-destructive'
-            }`}
+            className={`font-mono text-sm whitespace-pre-wrap ${!result.isError ? 'text-foreground' : 'text-destructive'
+              }`}
           >
-            {result.error || result.output}
+            {result.output}
           </pre>
         ) : (
           <p className="text-sm text-muted-foreground">

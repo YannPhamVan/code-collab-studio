@@ -27,3 +27,16 @@ cd frontend
 npm run dev
 npm test
 ```
+
+### Code Execution
+
+The platform supports secure client-side execution for:
+- **JavaScript**: Using isolated Web Workers.
+- **Python**: Using Pyodide in Web Workers.
+
+To verify execution logic locally:
+```bash
+# Run executor integration tests
+cd frontend
+npm test -- src/lib/executor.test.ts
+```
