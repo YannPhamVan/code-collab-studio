@@ -1,0 +1,253 @@
+openapi: 3.0.0
+info:
+  title: Code Collab Studio API
+  version: 1.0.0
+  description: |
+    API for the Code Collab Studio frontend.
+    Includes REST endpoints for session management and WebSocket definition for real-time collaboration.
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Basic token authentication.
+
+  schemas:
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        code:
+          type: string
+          description: Current code in the editor
+        language:
+          type: string
+          enum: [javascript, python]
+          default: javascript
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, code, language, participants, createdAt]
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatar:
+          type: string
+          format: uri
+        isOnline:
+          type: boolean
+        score:
+          type: integer
+          default: 0
+        joinedAt:
+          type: string
+          format: date-time
+      required: [id, name, isOnline, score, joinedAt]
+
+    JoinSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Display name for the participant
+      required: [name]
+
+    JoinSessionResponse:
+      type: object
+      properties:
+        participant:
+          $ref: '#/components/schemas/Participant'
+        token:
+          type: string
+          description: Session token for authentication (WebSocket & subsequent calls)
+      required: [participant, token]
+
+    CodeExecutionRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        language:
+          type: string
+          enum: [javascript, python]
+      required: [code, language]
+
+    CodeExecutionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        output:
+          type: string
+        error:
+          type: string
+        executionTime:
+          type: number
+          description: Execution time in milliseconds
+      required: [success, output, executionTime]
+    
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        participant:
+          $ref: '#/components/schemas/Participant'
+        solvedProblems:
+          type: integer
+        totalTime:
+          type: integer
+          description: Total time spent in seconds
+      required: [rank, participant, solvedProblems, totalTime]
+
+paths:
+  /sessions:
+    post:
+      summary: Create a new collaboration session
+      operationId: createSession
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '500':
+          description: Server error
+
+  /sessions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Session ID
+    get:
+      summary: Get session metadata
+      operationId: getSession
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+
+  /sessions/{id}/join:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Join a session
+      operationId: joinSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinSessionRequest'
+      responses:
+        '200':
+          description: Joined successfully, returns participant info and auth token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinSessionResponse'
+        '404':
+          description: Session not found
+
+  /sessions/{id}/leaderboard:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get session leaderboard
+      operationId: getLeaderboard
+      responses:
+        '200':
+          description: Current leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeaderboardEntry'
+
+  /run:
+    post:
+      summary: Execute code
+      operationId: executeCode
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeExecutionRequest'
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeExecutionResult'
+
+  /ws/{sessionId}:
+    get:
+      summary: WebSocket Connection
+      description: |
+        Connect to this endpoint to establish a WebSocket implementation.
+        URL: ws://localhost:8000/ws/{sessionId}
+        
+        **Protocol Messages (Client -> Server):**
+        - `join`: { type: 'join', data: { token: '...' } }
+        - `code_update`: { type: 'code_update', data: { code: '...' } }
+        - `cursor_position`: { type: 'cursor_position', data: { line: 1, column: 5 } }
+        - `language_change`: { type: 'language_change', data: { language: 'python' } }
+
+        **Protocol Messages (Server -> Client):**
+        - `participant_update`: { type: 'participant_update', data: [ ...participants ] }
+        - `code_update`: { type: 'code_update', data: { code: '...' } }
+        - `cursor_update`: { type: 'cursor_update', data: { position: ..., participantId: ... } }
+        - `language_update`: { type: 'language_update', data: { language: '...' } }
+        - `run_result`: { type: 'run_result', data: { ...result } } (if running via WS)
+      parameters:
+        - name: sessionId
+          in: path
+          schema:
+            type: string
+      responses:
+        '101':
+          description: Switching Protocols
